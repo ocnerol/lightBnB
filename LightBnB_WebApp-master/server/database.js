@@ -97,6 +97,11 @@ const getAllProperties = (options, limit = 10) => {
     }
   };
 
+  if (options.owner_id) {
+    queryParams.push(`${options.owner_id}`);
+    queryString += addAppropriateClause() + `properties.owner_id = $${queryParams.length}`;
+  }
+
   // if the given city exists, and is a string with at least two characters
   // this escapes entering a nonsensical 2 character city name
   if (options.city && options.city.length >= 2) {
@@ -110,7 +115,7 @@ const getAllProperties = (options, limit = 10) => {
     queryParams.push(options.minimum_price_per_night * 100);
     queryString += addAppropriateClause() + `cost_per_night >= $${queryParams.length} `;
   }
-  
+
   if (options.maximum_price_per_night) {
     queryParams.push(options.maximum_price_per_night * 100);
     queryString += addAppropriateClause() + `cost_per_night <= $${queryParams.length}`;
