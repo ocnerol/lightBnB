@@ -75,8 +75,52 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = (options, limit = 10) => {
+  const queryParams = [];
+  let queryString = `
+  SELECT properties.*, avg(property_reviews.rating) as average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id\n  `;
+
+  // will be used to add an AND clause if there is at least 1 other query parameter
+  // or start a WHERE clause if there is no other query parameters yet
+  const addAnd = () => {
+    switch (queryParams.length) {
+      case 1: {
+        return 'WHERE ';
+      }
+
+      default: {
+        return ' AND ';
+      }
+    }
+  };
+
+  // if the given city exists, and is a string with at least two characters
+  // this escapes entering a nonsensical 2 character city name
+  if (options.city && options.city.length >= 2) {
+    queryParams.push(`%${options.city.substring(1)}%`); // remove first character from city to escape initial capital letter comparison
+    queryString += addAnd() + `city LIKE $${queryParams.length}\n  `;
+  }
+
+  // if (options.minimum_price_per_night && options.minimum_price_per_night >= 0) {
+  //   // given price is in dollars and price is in cents
+  //   // so minimum_price_per_night needs to be multiplied by 100 to be in dollars
+  //   queryParams.push(options.minimum_price_per_night * 100);
+  //   queryString += addAnd() + `cost_per_night <= ${queryParams.length}\n  `;
+  // }
+
+
+  queryParams.push(limit);
+  queryString += `GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
+  `;
+
+  console.log('queryString:', queryString, 'queryParams:', queryParams);
+
+
   return pool.
-    query(`SELECT * FROM properties LIMIT $1`, [limit])
+    query(queryString, queryParams)
     .then((result) => result.rows)
     .catch((error) => error.message);
 }
